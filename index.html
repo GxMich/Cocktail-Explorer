@@ -4,24 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cocktail Explorer</title>
+    <!-- Collegamento al foglio di stile principale -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- PRESENTAZIONE -->
+    <!-- HERO / SEZIONE DI BENVENUTO -->
     <header class="hero">
         <h1>Benvenuto su <span>Cocktail Explorer</span></h1>
         <p>Scopri, cerca e prepara i tuoi cocktail preferiti direttamente dal database online!</p>
     </header>
 
-    <!-- BARRA DI RICERCA -->
+    <!-- SEZIONE DI RICERCA -->
     <section class="search-bar">
-        <input type="text" name="name" id="cocktail" placeholder="Cerca un cocktail..." autofocus required>
-        <button id="view-cocktail">Cerca</button>
+        <!-- Campo di input per inserire il nome del cocktail o ingrediente -->
+        <input type="text" name="name" id="search-text" placeholder="Cerca un cocktail..." autofocus required>
+        <!-- Bottone per avviare la ricerca -->
+        <button id="search">Cerca</button>
+
+        <!-- Lista dei suggerimenti dinamici (cocktail e ingredienti) -->
+        <div class="ingredient-filter">
+            <ul id="ingredient-suggestions" class="suggestions"></ul>
+        </div>
     </section>
 
-    <!-- CONTENITORE COCKTAIL -->
+    <!-- Contenitore per mostrare i cocktail trovati -->
     <div id="container-cocktail"></div>
 
-    <script src="script.js"></script>
+    <!-- Script principale -->
+    <script src="./script.js"></script>
 </body>
 </html>
