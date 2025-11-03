@@ -195,7 +195,10 @@ body {
   padding: 0 1rem;
 }
 
-/* Singola card cocktail */
+/* ================================
+   🍸 SINGOLA CARD COCKTAIL
+   Altezza uniforme per tutte le card
+================================== */
 .card-cocktail {
   background: radial-gradient(circle at top left, #2d1a10, #1b120c);
   border: 1px solid rgba(177, 123, 68, 0.2);
@@ -203,8 +206,11 @@ body {
   box-shadow: 0 10px 20px var(--colore-ombra);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+
   width: 100%;
-  max-width: 260px; /* limite per evitare che si deformi */
+  max-width: 260px;
+  min-height: 420px; /* Altezza uniforme */
+
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -217,73 +223,42 @@ body {
 }
 
 /* ================================
-   ⚡️ PLACEHOLDER CON EFFETTO SHIMMER
-   Mostrati durante il caricamento
-================================== */
-.card-cocktail.loading {
-  background: #2a1b12;
-  border: 1px solid rgba(177, 123, 68, 0.2);
-  border-radius: var(--radius);
-  box-shadow: 0 10px 20px var(--colore-ombra);
-  overflow: hidden;
-  position: relative;
-}
-
-/* Placeholder con effetto luce che si muove (shimmer) */
-.img-placeholder,
-.title-placeholder,
-.tags-placeholder {
-  background: linear-gradient(
-    90deg,
-    rgba(43, 27, 18, 0.8) 25%,
-    rgba(80, 50, 30, 0.9) 50%,
-    rgba(43, 27, 18, 0.8) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: var(--radius);
-  opacity: 0.9;
-}
-
-/* Dimensioni dei vari placeholder */
-.img-placeholder { height: 180px; width: 100%; }
-.title-placeholder { height: 24px; margin: 12px; }
-.tags-placeholder { height: 16px; margin: 8px 12px; }
-
-/* Animazione del shimmer */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* ================================
-   📸 CONTENUTO DELLA CARD
+   📸 IMMAGINE COCKTAIL
 ================================== */
 .img-cocktail {
   width: 100%;
-  height: 220px;
+  height: 180px; /* Altezza fissa per uniformità */
   object-fit: cover;
   border-bottom: 1px solid rgba(177, 123, 68, 0.3);
+}
+
+/* ================================
+   🧩 CONTENUTO CARD (Titolo + Tag + Bottone)
+================================== */
+.card-content {
+  flex: 1; /* fa espandere contenuto e mantiene bottone in basso */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
 }
 
 .title-cocktail {
   text-align: center;
   font-weight: 700;
   color: var(--colore-accento);
-  margin: 1rem 0 0.5rem;
+  margin: 0.5rem 0;
   letter-spacing: 1px;
 }
 
-/* Lista di tag con gli ingredienti */
 .tag-ingredienti-cocktail {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.5rem 1rem 1rem;
+  padding: 0.5rem 0 1rem;
 }
 
-/* Singolo tag ingrediente */
 .tag {
   background-color: rgba(177, 123, 68, 0.15);
   border: 1px solid rgba(177, 123, 68, 0.3);
@@ -316,4 +291,41 @@ body {
   background-color: var(--colore-accento);
   color: #fff;
   box-shadow: 0 0 10px var(--colore-accento);
+}
+
+/* ================================
+   ⚡️ PLACEHOLDER CON EFFETTO SHIMMER
+   Mostrati durante il caricamento
+================================== */
+.card-cocktail.loading {
+  background: #2a1b12;
+  border: 1px solid rgba(177, 123, 68, 0.2);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 20px var(--colore-ombra);
+  overflow: hidden;
+  position: relative;
+}
+
+.img-placeholder,
+.title-placeholder,
+.tags-placeholder {
+  background: linear-gradient(
+    90deg,
+    rgba(43, 27, 18, 0.8) 25%,
+    rgba(80, 50, 30, 0.9) 50%,
+    rgba(43, 27, 18, 0.8) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--radius);
+  opacity: 0.9;
+}
+
+.img-placeholder { height: 180px; width: 100%; }
+.title-placeholder { height: 24px; margin: 12px; }
+.tags-placeholder { height: 16px; margin: 8px 12px; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
