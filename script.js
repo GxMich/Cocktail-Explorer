@@ -1,94 +1,167 @@
-// Riferimenti agli elementi del DOM
-const btnSearch = document.getElementById('search');              // Bottone "Cerca"
-const searchText = document.getElementById('search-text');        // Campo input per il testo di ricerca
-const suggestionsList = document.getElementById('ingredient-suggestions'); // Lista dei suggerimenti
-let allIngredients = []; // Array globale che conterrà tutti gli ingredienti
-let allCocktails = [];   // Array globale che conterrà tutti i nomi dei cocktail
+// ===============================
+// 🎯 SEZIONE VARIABILI E RIFERIMENTI
+// ===============================
+
+// Prendo gli elementi principali dal DOM
+const btnSearch = document.getElementById('search');               // Bottone per avviare la ricerca
+const searchText = document.getElementById('search-text');         // Input di testo per scrivere cosa cercare
+const suggestionsList = document.getElementById('ingredient-suggestions'); // Lista dove mostro i suggerimenti
+
+// Array dove salvo tutti gli ingredienti e cocktail
+let allIngredients = [];
+let allCocktails = [];
 
 /**
- * Funzione asincrona che recupera TUTTI i cocktail (a–z e 0–9)
- * e l'elenco completo degli ingredienti dal database TheCocktailDB.
+ * Funzione asincrona che scarica tutti i cocktail (A–Z e 0–9)
+ * e la lista completa degli ingredienti dal database TheCocktailDB
  */
 const searchAllIngredients = async () => {
-    // Array di caratteri da 0–9 e a–z per interrogare l'API per ogni lettera/numero
+    // Creo un array di lettere e numeri da passare all’API
     const chars = [
-        ...Array.from({ length: 10 }, (_, i) => i.toString()), // ["0","1",...,"9"]
-        ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i)) // ["a","b",...,"z"]
+        ...Array.from({ length: 10 }, (_, i) => i.toString()), // ["0", "1", ..., "9"]
+        ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i)) // ["a", "b", ..., "z"]
     ];
 
     let risposta;
     let json;
 
-    // Ciclo su ogni carattere per ottenere i cocktail corrispondenti
+    // Faccio una chiamata per ogni lettera/numero per prendere tutti i cocktail
     for (const char of chars) {
         risposta = await fetch(`https://www.thecocktaildb.com/api/json/v1/1/search.php?f=${char}`);
         json = await risposta.json();
 
-        // Se ci sono risultati, aggiungo solo i nomi dei cocktail (non gli oggetti completi)
+        // Se ci sono risultati, prendo solo i nomi dei cocktail
         if (json.drinks) {
             allCocktails.push(...json.drinks.map(c => c.strDrink));
-            console.log(...json.drinks.map(c => c.strDrink)); // Debug: mostra i nomi ottenuti
+            console.log(...json.drinks.map(c => c.strDrink)); // Controllo in console cosa arriva
         }
     }
 
-    console.log('✅ Caricamento cocktail completato.');
+    console.log('✅ Tutti i cocktail caricati!');
 
-    // Recupero l'elenco completo degli ingredienti
+    // Ora chiamo l’API per avere la lista di tutti gli ingredienti
     risposta = await fetch('https://www.thecocktaildb.com/api/json/v1/1/list.php?i=list');
     json = await risposta.json();
 
-    // Aggiungo i nomi degli ingredienti all’array globale
+    // Aggiungo gli ingredienti nell’array globale
     json.drinks.forEach(i => allIngredients.push(i.strIngredient1));
 
-    console.log('✅ Caricamento ingredienti completato.');
+    console.log('✅ Tutti gli ingredienti caricati!');
 };
 
 
 /**
- * Funzione che genera i suggerimenti dinamici
- * in base al testo inserito dall’utente nell’input.
+ * Funzione che mostra i suggerimenti mentre l’utente scrive
  */
 const suggestions = () => {
-    const query = searchText.value.toLowerCase().trim(); // Testo digitato, normalizzato
-    suggestionsList.innerHTML = ''; // Pulisco la lista precedente
+    const query = searchText.value.toLowerCase().trim(); // Prendo il testo dell’input e lo metto in minuscolo
+    suggestionsList.innerHTML = ''; // Svuoto la lista ogni volta prima di aggiungere nuovi risultati
 
-    if (!query) return; // Se l’input è vuoto, interrompo la funzione
+    // Se l’input è vuoto, non faccio nulla
+    if (!query) return;
 
-    // Filtra gli ingredienti (massimo 5 risultati)
+    // Filtro gli ingredienti (massimo 5 risultati)
     const filteredIngredients = allIngredients
         .map(i => i.toLowerCase())
         .filter(i => i.includes(query))
         .slice(0, 5);
 
-    // Filtra i cocktail (massimo 5 risultati)
+    // Filtro i cocktail (massimo 5 risultati)
     const filteredCocktails = allCocktails
         .map(c => c.toLowerCase())
         .filter(c => c.includes(query))
         .slice(0, 5);
 
-    // Combina i risultati in un unico array con il tipo (cocktail / ingrediente)
+    // Metto insieme i risultati, indicando se è un cocktail o un ingrediente
     const combined = [
         ...filteredCocktails.map(c => ({ name: c, type: 'cocktail' })),
         ...filteredIngredients.map(i => ({ name: i, type: 'ingredient' }))
     ];
 
-    // Per ogni suggerimento trovato, creo un <li> nella lista
+    // Creo un elemento <li> per ogni suggerimento trovato
     combined.forEach(item => {
         const li = document.createElement('li');
         li.textContent = item.name;
-        li.dataset.type = item.type; // Serve per applicare stile differente nel CSS
+        li.dataset.type = item.type; // Serve per lo stile nel CSS
         suggestionsList.appendChild(li);
 
-        // Quando l’utente clicca su un suggerimento, lo inserisco nell’input
+        // Quando clicco su un suggerimento, lo scrive nell’input e chiude la lista
         li.addEventListener('click', () => {
             searchText.value = item.name;
-            suggestionsList.innerHTML = ''; // Nasconde la lista dopo la selezione
+            suggestionsList.innerHTML = '';
         });
     });
 };
 
-// Eseguo il caricamento iniziale dei dati (cocktail + ingredienti)
+// Faccio partire subito il caricamento dei dati
 searchAllIngredients();
 
-// Attivo i suggerimenti dinamici durante la digitazione
+// Ogni volta che scrivo nell’input, aggiorno i suggerimenti
 searchText.addEventListener('input', suggestions);
+
+
+/**
+ * Funzione che mostra 9 cocktail casuali con effetto shimmer di caricamento
+ */
+const mostraRandomCocktail = async () => {
+    const contenitore = document.getElementById('container-cocktail');
+    contenitore.innerHTML = '';
+
+    const cocktailSet = new Set();
+
+    // Prima mostro 9 placeholder con effetto shimmer (loading)
+    for (let i = 0; i < 9; i++) {
+        const placeholder = document.createElement('div');
+        placeholder.classList.add('card-cocktail', 'loading');
+        placeholder.innerHTML = `
+            <div class="img-placeholder"></div>
+            <div class="title-placeholder"></div>
+            <div class="tags-placeholder"></div>
+        `;
+        contenitore.appendChild(placeholder);
+    }
+
+    // Poi chiamo l’API 9 volte per ottenere cocktail casuali
+    while (cocktailSet.size < 9) {
+        const response = await fetch('https://www.thecocktaildb.com/api/json/v1/1/random.php');
+        const json = await response.json();
+        cocktailSet.add(json.drinks[0]); // Aggiungo solo l’oggetto cocktail
+    }
+
+    // Una volta pronti, sostituisco i placeholder con i dati reali
+    Array.from(contenitore.children).forEach((card, index) => {
+        const cocktail = Array.from(cocktailSet)[index];
+        card.classList.remove('loading');
+
+        // Creo la lista degli ingredienti
+        let ingredientiHTML = '';
+        for (let i = 1; i <= 15; i++) {
+            const ingrediente = cocktail[`strIngredient${i}`];
+            if (ingrediente) {
+                ingredientiHTML += `<p class="tag">${ingrediente}</p>`;
+            }
+        }
+
+        // Riempio la card con i dati veri del cocktail
+        card.innerHTML = `
+            <img class="img-cocktail" src="${cocktail.strDrinkThumb}" alt="${cocktail.strDrink}">
+            <h2 class="title-cocktail">${cocktail.strDrink}</h2>
+            <div class="tag-ingredienti-cocktail">
+                ${ingredientiHTML}
+            </div>
+            <button class="btn-view-ricetta" data-id="${cocktail.idDrink}">Ricetta</button>
+        `;
+
+        // Aggiungo un effetto di comparsa (fade-in) per ogni card
+        card.style.opacity = 0;
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = 1;
+            card.style.transform = 'translateY(0)';
+        }, index * 100); // piccolo ritardo tra le card per effetto graduale
+    });
+};
+
+// Quando la pagina è pronta, mostro subito 9 cocktail casuali
+window.addEventListener('DOMContentLoaded', mostraRandomCocktail);
