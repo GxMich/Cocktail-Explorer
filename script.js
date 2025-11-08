@@ -8,7 +8,9 @@ let allCocktails = [];
 let allIngredients = [];
 
 /* ============================================================
-   🔍 Funzione principale di ricerca
+   Funzione principale di ricerca
+   Qui gestisco la ricerca di cocktail o ingredienti
+   Ho cercato di ottimizzarla usando Promise.all per le chiamate API
 ============================================================ */
 const cerca = async (elemento) => {
     const baseUrl = 'https://www.thecocktaildb.com/api/json/v1/1/';
@@ -17,9 +19,11 @@ const cerca = async (elemento) => {
     const contenitore = document.getElementById('container-cocktail');
     contenitore.innerHTML = '';
 
-    const cocktailMatch = filteredCocktails.some(c => c.toLowerCase().trim() === el);
-    const ingredientMatch = filteredIngredients.some(i => i.toLowerCase().trim() === el);
+    // Controllo se quello che scrive l’utente è un nome cocktail o un ingrediente
+    const cocktailMatch = allCocktails.map(c => c.toLowerCase()).some(c => c.trim() === el);
+    const ingredientMatch = allIngredients.map(i => i.toLowerCase()).some(i => i.trim() === el);
 
+    // In base a cosa è stato trovato, imposto l’URL giusto per l’API
     if (cocktailMatch) {
         url = `${baseUrl}search.php?s=${elemento}`;
     } else if (ingredientMatch) {
@@ -28,7 +32,7 @@ const cerca = async (elemento) => {
         url = `${baseUrl}search.php?s=${elemento}`;
     }
 
-    // Placeholder shimmer
+    // Aggiungo dei “placeholder shimmer” per far vedere che sta caricando
     for (let i = 0; i < 9; i++) {
         const placeholder = document.createElement('div');
         placeholder.classList.add('card-cocktail', 'loading');
@@ -41,43 +45,66 @@ const cerca = async (elemento) => {
     }
 
     try {
+        // Faccio la chiamata API
         const response = await fetch(url);
         const json = await response.json();
         const drinks = json.drinks || [];
 
+        // Se non ci sono risultati, mostro un messaggio
         if (drinks.length === 0) {
             contenitore.innerHTML = `<p class="no-results">Nessun cocktail trovato per "${elemento}"</p>`;
             return;
         }
 
-        // Se è una ricerca per ingrediente → fetch dettagli per ogni id
         let dettagli = [];
+
+        // Se l’utente ha cercato un ingrediente, devo fare altre chiamate per ottenere i dettagli
         if (ingredientMatch) {
-            for (const d of drinks) {
-                try {
-                    const res = await fetch(`${baseUrl}lookup.php?i=${d.idDrink}`);
-                    const data = await res.json();
-                    if (data.drinks && data.drinks[0]) dettagli.push(data.drinks[0]);
-                } catch (err) {
-                    console.warn(`Errore nel caricamento di ${d.idDrink}`, err);
-                }
+            const detailPromises = drinks.map(d => 
+                fetch(`${baseUrl}lookup.php?i=${d.idDrink}`)
+                    .then(res => res.json())
+                    .then(data => data.drinks && data.drinks[0] ? data.drinks[0] : null)
+                    .catch(err => {
+                        console.warn(`Errore nel caricamento di ${d.idDrink}`, err);
+                        return null;
+                    })
+            );
+            
+            const allDetails = await Promise.all(detailPromises);
+            dettagli = allDetails.filter(d => d !== null);
+
+            if (dettagli.length === 0) {
+                contenitore.innerHTML = `<p class="no-results">Nessun dettaglio trovato per i cocktail con "${elemento}"</p>`;
+                return;
             }
+
         } else {
+            // Se invece è un cocktail, prendo direttamente i risultati
             dettagli = drinks;
+            
+            // Aggiungo nuovi cocktail alla lista globale per i suggerimenti
+            dettagli.forEach(c => {
+                if (!allCocktails.includes(c.strDrink)) {
+                    allCocktails.push(c.strDrink);
+                }
+            });
         }
 
         contenitore.innerHTML = '';
 
+        // Mostro al massimo 20 risultati
         dettagli.slice(0, 20).forEach((cocktail, index) => {
             const card = document.createElement('div');
             card.classList.add('card-cocktail');
 
+            // Creo la lista degli ingredienti per ogni cocktail
             let ingredientiHTML = '';
             for (let i = 1; i <= 15; i++) {
                 const ingrediente = cocktail[`strIngredient${i}`];
                 if (ingrediente) ingredientiHTML += `<p class="tag">${ingrediente}</p>`;
             }
 
+            // Struttura della card del cocktail
             card.innerHTML = `
                 <img class="img-cocktail" src="${cocktail.strDrinkThumb}" alt="${cocktail.strDrink}">
                 <h2 class="title-cocktail">${cocktail.strDrink}</h2>
@@ -85,6 +112,7 @@ const cerca = async (elemento) => {
                 <button class="btn-view-ricetta" data-id="${cocktail.idDrink}">Ricetta</button>
             `;
 
+            // Effetto di comparsa graduale
             card.style.opacity = 0;
             card.style.transform = 'translateY(20px)';
             setTimeout(() => {
@@ -96,6 +124,7 @@ const cerca = async (elemento) => {
             contenitore.appendChild(card);
         });
 
+        // Aggiungo il click sul bottone “Ricetta” per ogni card
         document.querySelectorAll('.btn-view-ricetta').forEach(btn => {
             btn.addEventListener('click', e => mostraRicetta(e.target.dataset.id));
         });
@@ -106,37 +135,34 @@ const cerca = async (elemento) => {
     }
 };
 
+
 /* ============================================================
-   📦 Caricamento di tutti i cocktail e ingredienti (in background)
+   Caricamento solo degli ingredienti all’avvio
+   Così evito di fare troppe chiamate API (errore 429)
 ============================================================ */
 const searchAllIngredients = async () => {
-    const chars = [
-        ...Array.from({ length: 10 }, (_, i) => i.toString()),
-        ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i))
-    ];
-
-    const promises = chars.map(char =>
-        fetch(`https://www.thecocktaildb.com/api/json/v1/1/search.php?f=${char}`).then(r => r.json())
-    );
+    const baseUrl = 'https://www.thecocktaildb.com/api/json/v1/1/';
+    
+    const ingredientPromise = fetch(`${baseUrl}list.php?i=list`).then(r => r.json());
 
     try {
-        const results = await Promise.all(promises);
-        results.forEach(json => {
-            if (json.drinks) allCocktails.push(...json.drinks.map(c => c.strDrink));
-        });
+        const ingredientJson = await ingredientPromise;
 
-        const risposta = await fetch('https://www.thecocktaildb.com/api/json/v1/1/list.php?i=list');
-        const json = await risposta.json();
-        json.drinks.forEach(i => allIngredients.push(i.strIngredient1));
+        if (ingredientJson.drinks) {
+            allIngredients = ingredientJson.drinks.map(i => i.strIngredient1);
+        }
 
-        console.log('✅ Tutti gli ingredienti e cocktail caricati');
+        console.log('Lista ingredienti caricata');
     } catch (err) {
         console.error('Errore nel caricamento ingredienti:', err);
     }
 };
 
+
 /* ============================================================
-   💡 Sistema suggerimenti (cocktail + ingredienti)
+   Sistema dei suggerimenti
+   Qui gestisco la lista di ingredienti e cocktail che compaiono
+   mentre l’utente scrive nella barra di ricerca
 ============================================================ */
 const suggestions = () => {
     const query = searchText.value.toLowerCase().trim();
@@ -156,32 +182,41 @@ const suggestions = () => {
     const combined = [
         ...filteredCocktails.map(c => ({ name: c, type: 'cocktail' })),
         ...filteredIngredients.map(i => ({ name: i, type: 'ingredient' }))
-    ];
+    ].slice(0, 10);
 
+    // Mostro fino a 10 suggerimenti totali
     combined.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = item.name;
+        const displayName = item.name.split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+        
+        li.textContent = displayName;
         li.dataset.type = item.type;
         suggestionsList.appendChild(li);
 
+        // Quando clicco su un suggerimento, lo imposto nel campo e avvio la ricerca
         li.addEventListener('click', () => {
-            searchText.value = item.name;
+            searchText.value = item.name; 
             suggestionsList.innerHTML = '';
+            searchCocktail(); 
         });
     });
 };
 
+
 /* ============================================================
-   🍸 Mostra cocktail random all’avvio
+   Mostro 9 cocktail casuali all’avvio
+   Anche qui uso Promise.all per caricarli insieme
 ============================================================ */
 const mostraRandomCocktail = async () => {
     const contenitore = document.getElementById('container-cocktail');
     contenitore.innerHTML = '';
 
-    const cocktailSet = new Set();
+    const NUM_COCKTAILS = 9;
 
-    // Placeholder shimmer
-    for (let i = 0; i < 9; i++) {
+    // Placeholder mentre carica
+    for (let i = 0; i < NUM_COCKTAILS; i++) {
         const placeholder = document.createElement('div');
         placeholder.classList.add('card-cocktail', 'loading');
         placeholder.innerHTML = `
@@ -191,16 +226,29 @@ const mostraRandomCocktail = async () => {
         `;
         contenitore.appendChild(placeholder);
     }
-
-    while (cocktailSet.size < 9) {
-        const response = await fetch('https://www.thecocktaildb.com/api/json/v1/1/random.php');
-        const json = await response.json();
-        cocktailSet.add(json.drinks[0]);
+    
+    // Creo le promesse per ottenere cocktail random
+    const randomPromises = [];
+    for (let i = 0; i < NUM_COCKTAILS; i++) {
+        randomPromises.push(
+            fetch('https://www.thecocktaildb.com/api/json/v1/1/random.php')
+                .then(r => r.json())
+                .then(json => json.drinks[0])
+                .catch(err => {
+                    console.error('Errore caricamento random:', err);
+                    return null;
+                })
+        );
     }
 
-    Array.from(contenitore.children).forEach((card, index) => {
-        const cocktail = Array.from(cocktailSet)[index];
-        card.classList.remove('loading');
+    const randomDrinks = await Promise.all(randomPromises);
+    
+    contenitore.innerHTML = ''; 
+
+    // Mostro le card dei cocktail caricati
+    randomDrinks.filter(c => c !== null).forEach((cocktail, index) => {
+        const card = document.createElement('div');
+        card.classList.add('card-cocktail');
 
         let ingredientiHTML = '';
         for (let i = 1; i <= 15; i++) {
@@ -215,6 +263,7 @@ const mostraRandomCocktail = async () => {
             <button class="btn-view-ricetta" data-id="${cocktail.idDrink}">Ricetta</button>
         `;
 
+        // Animazione di comparsa
         card.style.opacity = 0;
         card.style.transform = 'translateY(20px)';
         setTimeout(() => {
@@ -222,22 +271,32 @@ const mostraRandomCocktail = async () => {
             card.style.opacity = 1;
             card.style.transform = 'translateY(0)';
         }, index * 100);
-    });
 
+        contenitore.appendChild(card);
+    });
+    
     document.querySelectorAll('.btn-view-ricetta').forEach(btn => {
         btn.addEventListener('click', e => mostraRicetta(e.target.dataset.id));
     });
 };
 
+
 /* ============================================================
-   📋 Mostra ricetta completa
+   Mostra la ricetta completa di un cocktail
+   Aggiungo anche il tasto per tornare indietro
 ============================================================ */
 const mostraRicetta = (id) => {
+    suggestionsList.innerHTML = ''; // Chiudo i suggerimenti se erano aperti
+    
     const url = `https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i=${id}`;
     fetch(url)
         .then(r => r.json())
         .then(json => {
             const obj = json.drinks[0];
+            if (!obj) {
+                console.error("Dettagli ricetta non trovati.");
+                return;
+            }
 
             let ingredientiHTML = '';
             for (let i = 1; i <= 15; i++) {
@@ -260,6 +319,8 @@ const mostraRicetta = (id) => {
             bg.style.background = `linear-gradient(rgba(15,14,12,0.85), rgba(15,14,12,0.95)), url('${obj.strDrinkThumb}') center/contain no-repeat`;
             container.appendChild(bg);
 
+            const istruzioni = obj.strInstructionsIT || obj.strInstructions || 'Istruzioni non disponibili.';
+
             container.innerHTML += `
             <p class="back-arrow">Torna ai cocktail</p>
             <div class="drink-content">
@@ -267,25 +328,36 @@ const mostraRicetta = (id) => {
                 <h2 class="ingre">Ingredienti</h2>
                 <div class="ingredienti">${ingredientiHTML}</div>
                 <h2>Preparazione</h2>
-                <p class="istruzioni">${obj.strInstructionsIT}</p>
+                <p class="istruzioni">${istruzioni}</p>
             </div>`;
 
             document.body.appendChild(container);
 
-            window.addEventListener('scroll', () => {
-                const scrollPos = window.scrollY;
-                bg.style.transform = `translateY(${scrollPos * 0.3}px)`;
-            });
-
             document.querySelector('.back-arrow').addEventListener('click', () => {
                 container.remove();
             });
+            
+            const closeOnEsc = (e) => {
+                if (e.key === 'Escape') {
+                    container.remove();
+                    document.removeEventListener('keydown', closeOnEsc);
+                }
+            };
+            document.addEventListener('keydown', closeOnEsc);
+            
+            const parallaxScroll = () => {
+                const scrollPos = window.scrollY;
+                bg.style.transform = `translateY(${scrollPos * 0.3}px)`;
+            };
+            window.addEventListener('scroll', parallaxScroll);
         })
         .catch(err => console.error(err));
 };
 
+
 /* ============================================================
-   🚀 Avvio e Event Listeners
+   Event listeners principali
+   Gestisco invio, click, caricamento e chiusura suggerimenti
 ============================================================ */
 const searchCocktail = () => {
     const value = searchText.value.trim();
@@ -295,24 +367,34 @@ const searchCocktail = () => {
     }
     cerca(value);
     searchText.value = '';
+    suggestionsList.innerHTML = '';
     searchText.focus();
 };
 
+// Quando premo Enter, faccio partire la ricerca
 searchText.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         searchCocktail();
+    }
+});
+
+btnSearch.addEventListener('click', searchCocktail);
+searchText.addEventListener('input', suggestions);
+
+// Chiudo i suggerimenti se clicco fuori
+document.addEventListener('click', (e) => {
+    if (!searchText.contains(e.target) && !suggestionsList.contains(e.target)) {
         suggestionsList.innerHTML = '';
     }
 });
 
+// All’avvio metto il focus sulla barra di ricerca
 window.addEventListener('load', () => {
     searchText.focus();
 });
 
+// Quando la pagina è pronta, carico cocktail random e lista ingredienti
 window.addEventListener('DOMContentLoaded', async () => {
-    await mostraRandomCocktail();
-    searchAllIngredients(); // carica in background
+    mostraRandomCocktail(); 
+    searchAllIngredients(); 
 });
-
-searchText.addEventListener('input', suggestions);
-btnSearch.addEventListener('click', searchCocktail);
