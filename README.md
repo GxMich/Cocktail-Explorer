@@ -50,14 +50,6 @@ TheCocktailDB API – fonte dei dati (cocktail, ingredienti, ricette)
 
 4. Attendi il caricamento iniziale dei cocktail random, poi prova a cercare un cocktail o un ingrediente.
 
-📂 Struttura del progetto
-
-📁 project-folder
-│
-├── index.html           # Pagina principale
-├── style.css            # Stili e animazioni
-├── script.js            # Logica JS (ricerca, API, suggerimenti)
-└── README.md            # Questo file
 
 🧠 Cose che ho imparato
 
