@@ -35,22 +35,6 @@ JavaScript (vanilla) – logica principale
 Fetch API – per comunicare con TheCocktailDB  
 TheCocktailDB API – fonte dei dati (cocktail, ingredienti, ricette)
 
-
-⚙️ Come eseguirlo
-
-1. Clona la repository:
-    bash
-    git clone https://github.com/tuo-username/nome-repo.git
-
-2. Apri il progetto:
-
-    cd nome-repo
-
-3. Apri il file index.html nel browser (oppure usa Live Server su VS Code).
-
-4. Attendi il caricamento iniziale dei cocktail random, poi prova a cercare un cocktail o un ingrediente.
-
-
 🧠 Cose che ho imparato
 
 Durante lo sviluppo di questo progetto ho imparato a:
